@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
+import { middlewareRateLimit } from "@/lib/rate-limit/upstash";
 
 // ── Route matchers ─────────────────────────────────────────────────────────────
 
@@ -55,6 +56,11 @@ function buildSecurityHeaders(nonce: string, clerkPublishableKey: string): Recor
 // ── Middleware ─────────────────────────────────────────────────────────────────
 
 export default clerkMiddleware(async (auth, request: NextRequest) => {
+  // Rate limit check BEFORE auth — prevents brute-force on auth endpoints
+  // and reduces load on Clerk's API from malicious actors.
+  const rateLimitResponse = await middlewareRateLimit(request);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const nonce = generateNonce();
   const clerkKey = process.env["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"] ?? "";
   const securityHeaders = buildSecurityHeaders(nonce, clerkKey);
