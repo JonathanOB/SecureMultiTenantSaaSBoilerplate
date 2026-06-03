@@ -1,1 +1,162 @@
-﻿// TODO: implement in Stage 3
+// Prisma schema for the multi-tenant SaaS boilerplate.
+// Every tenant-scoped table has an orgId column protected by Supabase RLS.
+// Run `npm run db:generate` after changes to regenerate the typed client.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// In Prisma v7 the connection URL lives in prisma.config.ts, not here.
+// See prisma.config.ts at the project root.
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPERADMIN
+  MEMBER
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// Values kept lowercase to match Stripe subscription status strings directly.
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+  incomplete
+  incomplete_expired
+  paused
+  unpaid
+}
+
+// ── Models ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id          String    @id @default(cuid(1))
+  clerkId     String    @unique
+  email       String    @unique
+  name        String?
+  avatarUrl   String?
+  role        UserRole  @default(MEMBER)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  memberships   OrganizationMembership[]
+  apiKeys       ApiKey[]
+  auditLogs     AuditLog[]
+  uploadedFiles UploadedFile[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model Organization {
+  id                   String              @id @default(cuid(1))
+  name                 String
+  slug                 String              @unique
+  logoUrl              String?
+  plan                 String              @default("free")
+  stripeCustomerId     String?             @unique
+  stripeSubscriptionId String?             @unique
+  stripePriceId        String?
+  subscriptionStatus   SubscriptionStatus?
+  trialEndsAt          DateTime?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  memberships   OrganizationMembership[]
+  apiKeys       ApiKey[]
+  auditLogs     AuditLog[]
+  uploadedFiles UploadedFile[]
+
+  @@index([slug])
+}
+
+model OrganizationMembership {
+  id        String    @id @default(cuid(1))
+  orgId     String
+  userId    String
+  role      OrgRole   @default(MEMBER)
+  invitedAt DateTime  @default(now())
+  joinedAt  DateTime?
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+  @@index([orgId])
+  @@index([userId])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid(1))
+  orgId      String
+  userId     String
+  name       String
+  keyHash    String    @unique
+  prefix     String
+  scopes     String[]
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([keyHash])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid(1))
+  orgId      String
+  userId     String
+  action     String
+  resource   String?
+  resourceId String?
+  metadata   Json     @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@index([action])
+}
+
+model UploadedFile {
+  id        String   @id @default(cuid(1))
+  orgId     String
+  userId    String
+  bucket    String
+  path      String
+  filename  String
+  mimeType  String
+  sizeBytes Int
+  isPublic  Boolean  @default(false)
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bucket, path])
+  @@index([orgId])
+  @@index([userId])
+}
