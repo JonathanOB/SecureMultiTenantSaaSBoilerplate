@@ -10,6 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
+# project
+/project
+
 # testing
 /coverage
 
@@ -30,8 +33,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — commit .env.local.example, never .env.local
+.env.local
+.env*.local
+
+# Sentry auth token
+.sentryclirc
 
 # vercel
 .vercel
