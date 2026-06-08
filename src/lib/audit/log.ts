@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 
@@ -51,6 +52,7 @@ function sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unk
   for (const [k, v] of Object.entries(metadata)) {
     const lower = k.toLowerCase();
     if (SENSITIVE_PATTERNS.some((p) => lower.includes(p))) continue;
+    // eslint-disable-next-line security/detect-object-injection
     sanitized[k] = v;
   }
   return sanitized;
@@ -103,8 +105,7 @@ export function writeAuditLog(params: WriteAuditLogParams): void {
       await persist(params);
     } catch (e) {
       // Audit log failures must never break the main flow.
-      // TODO(Stage 15): replace with Sentry.captureException(e)
-      console.error("[audit] Failed to write audit log:", e);
+      Sentry.captureException(e, { tags: { component: "audit-log" } });
     }
   });
 }

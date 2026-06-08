@@ -30,6 +30,10 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unsafe-member-access": "error",
       "@typescript-eslint/no-unsafe-return": "error",
       "no-console": ["error", { allow: ["warn", "error"] }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
     },
   },
 
@@ -71,6 +75,9 @@ const eslintConfig = defineConfig([
     "prisma/**",
     "scripts/**",
     "*.config.*",
+    // OrgContext.ts is the authoritative file; TypeScript ignores the .tsx
+    // shadow so ESLint cannot parse it against a tsconfig project.
+    "src/components/dashboard/OrgContext.tsx",
   ]),
 ]);
 
