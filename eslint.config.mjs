@@ -75,6 +75,9 @@ const eslintConfig = defineConfig([
     "prisma/**",
     "scripts/**",
     "*.config.*",
+    // OrgContext.ts is the authoritative file; TypeScript ignores the .tsx
+    // shadow so ESLint cannot parse it against a tsconfig project.
+    "src/components/dashboard/OrgContext.tsx",
   ]),
 ]);
 

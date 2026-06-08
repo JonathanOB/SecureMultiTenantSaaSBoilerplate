@@ -6,8 +6,6 @@ import { middlewareRateLimit } from "@/lib/rate-limit/upstash";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/api/v1(.*)"]);
 
-const isAuthRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
-
 // ── Nonce generation ───────────────────────────────────────────────────────────
 // A fresh cryptographic nonce is created per request and injected into the CSP
 // and into the x-nonce request header so layouts can pass it to <Script> tags.
